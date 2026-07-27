@@ -1,15 +1,30 @@
-var builder = WebApplication.CreateBuilder(args);
+using backend;
+using Microsoft.EntityFrameworkCore;
 
-// 1. 註冊 CORS 服務（允許你的 Vue 前端存取 API）
+var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.UseUrls("http://0.0.0.0:5286");
+
+// 1. 註冊 CORS (允許 Vue 存取)
+var allowedOrigins = builder.Configuration.GetSection("AllowedCorsOrigins").Get<string[]>() 
+                     ?? new[] { "http://192.168.200.171:5173/vue-resume/" };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVueApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173") // Vue 的預設網址
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.WithOrigins(
+            "http://localhost:5173",
+            "https://cred52499.github.io" // GitHub Pages 網址
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod();
     });
 });
+
+// 2. 註冊 MySQL 資料庫連線
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -22,14 +37,23 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// 套用 CORS 政策
 app.UseCors("AllowVueApp");
 
-// --------------------------------------------------
-// 你的自訂 API 請寫在這裡下方！
-// --------------------------------------------------
+// POST: 新增訪問記錄並回傳總次數
+app.MapPost("/api/visit", async (AppDbContext db) =>
+{
+    db.VisitLogs.Add(new VisitLog());
+    await db.SaveChangesAsync();
 
-// 範例：你可以寫一個簡單的測試 API 來驗證連線
-app.MapGet("/api/test", () => new { message = "後端成功連線！" });
+    var totalVisits = await db.VisitLogs.CountAsync();
+    return Results.Ok(new { message = "訪問成功", totalVisits = totalVisits });
+});
+
+// GET: 純讀取總次數，不新增資料庫記錄 (供 F5 重新整理使用)
+app.MapGet("/api/visit", async (AppDbContext db) =>
+{
+    var totalVisits = await db.VisitLogs.CountAsync();
+    return Results.Ok(new { totalVisits = totalVisits });
+});
 
 app.Run();
