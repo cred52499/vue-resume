@@ -12,12 +12,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVueApp", policy =>
     {
-        policy.WithOrigins(
-            "http://localhost:5173",
-            "https://cred52499.github.io" // GitHub Pages 網址
-        )
-        .AllowAnyHeader()
-        .AllowAnyMethod();
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 });
 
@@ -37,7 +34,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowVueApp");
+app.UseCors("AllowAll");
 
 // POST: 新增訪問記錄並回傳總次數
 app.MapPost("/api/visit", async (AppDbContext db) =>
