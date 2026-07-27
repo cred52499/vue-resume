@@ -5,7 +5,10 @@ import { ref, onMounted } from 'vue'
 const visitorCount = ref<number>(0)
 
 // API 基礎路徑
-const BASE_URL = 'https://vue-resume-xlvc.onrender.com'
+// 自動判斷：如果在本地端就連本機後端，如果在線上就連 Render
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:5286/api/visit'                    // 👈 本機開發測試
+  : 'https://vue-resume-xlvc.onrender.com/api/visit';   // 👈 上線給別人看
 
 // 1. 修改 Vue 中的 recordVisit 函式
 const recordVisit = async (isNewSession: boolean = true): Promise<void> => {
@@ -13,7 +16,7 @@ const recordVisit = async (isNewSession: boolean = true): Promise<void> => {
     // 新 Session 才發送 POST（增加次數），否則發送 GET（只抓總數）
     const method = isNewSession ? 'POST' : 'GET'
     
-    const response = await fetch('https://vue-resume-xlvc.onrender.com/api/visit', {
+    const response = await fetch(API_URL, {
       method: method,
       headers: { 'Content-Type': 'application/json' }
     })
