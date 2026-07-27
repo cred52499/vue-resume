@@ -34,7 +34,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowAll");
+app.UseCors("AllowVueApp");
 
 // POST: 新增訪問記錄並回傳總次數
 app.MapPost("/api/visit", async (AppDbContext db) =>

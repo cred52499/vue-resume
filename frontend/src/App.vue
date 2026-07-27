@@ -71,11 +71,11 @@ let startY = 0
 let isDragging = false
 
 const handleTouchStart = (e: TouchEvent) => {
-  startY = e.touches[0].clientY
+  startY = e.touches?.[0]?.clientY ?? 0
 }
 
 const handleTouchEnd = (e: TouchEvent) => {
-  const endY = e.changedTouches[0].clientY
+  const endY = e.changedTouches?.[0]?.clientY ?? startY
   handleSwipeGesture(startY, endY)
 }
 
