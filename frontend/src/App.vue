@@ -1,5 +1,31 @@
-<script setup>
-import { ref } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+
+// 2. 宣告響應式狀態，指定為 number 型別
+const visitorCount = ref<number>(0)
+
+// API 基礎路徑
+const BASE_URL = 'https://vue-resume-xlvc.onrender.com'
+
+// 1. 修改 Vue 中的 recordVisit 函式
+const recordVisit = async (isNewSession: boolean = true): Promise<void> => {
+  try {
+    // 新 Session 才發送 POST（增加次數），否則發送 GET（只抓總數）
+    const method = isNewSession ? 'POST' : 'GET'
+    
+    const response = await fetch('https://vue-resume-xlvc.onrender.com/api/visit', {
+      method: method,
+      headers: { 'Content-Type': 'application/json' }
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      visitorCount.value = data.totalVisits // 寫入數字
+    }
+  } catch (error) {
+    console.error('API 呼叫失敗:', error)
+  }
+}
 
 // activeCardIndex: 0 = Personal, 1 = Skills, 2 = Achievements
 const activeCardIndex = ref(0)
@@ -8,19 +34,19 @@ const totalCards = 3
 // Expanded Card State
 const isExpanded = ref(false)
 
-const toggleExpand = (event) => {
+const toggleExpand = (event: MouseEvent) => {
   // Prevent card click/swipe from interfering with the toggle button click
   event.stopPropagation()
   isExpanded.value = !isExpanded.value
 }
 
 // Calculates visual depth (0 = Front/Active, 1 = Middle, 2 = Back)
-const getDepth = (cardIndex) => {
+const getDepth = (cardIndex: number) => {
   return (cardIndex - activeCardIndex.value + totalCards) % totalCards
 }
 
 // Navigation helpers (Resets expand state on navigation)
-const setCard = (index) => {
+const setCard = (index: number) => {
   if (activeCardIndex.value !== index) {
     isExpanded.value = false // Auto-reset when switching cards
     activeCardIndex.value = index
@@ -41,27 +67,27 @@ const prevCard = () => {
 let startY = 0
 let isDragging = false
 
-const handleTouchStart = (e) => {
+const handleTouchStart = (e: TouchEvent) => {
   startY = e.touches[0].clientY
 }
 
-const handleTouchEnd = (e) => {
+const handleTouchEnd = (e: TouchEvent) => {
   const endY = e.changedTouches[0].clientY
   handleSwipeGesture(startY, endY)
 }
 
-const handleMouseDown = (e) => {
+const handleMouseDown = (e: MouseEvent) => {
   startY = e.clientY
   isDragging = true
 }
 
-const handleMouseUp = (e) => {
+const handleMouseUp = (e: MouseEvent) => {
   if (!isDragging) return
   isDragging = false
   handleSwipeGesture(startY, e.clientY)
 }
 
-const handleSwipeGesture = (start, end) => {
+const handleSwipeGesture = (start: number, end: number) => {
   const diffY = start - end
   const threshold = 40
 
@@ -73,6 +99,20 @@ const handleSwipeGesture = (start, end) => {
     }
   }
 }
+
+// 2. 生命週期鉤子
+onMounted(() => {
+  const hasVisited = sessionStorage.getItem('visited')
+
+  if (!hasVisited) {
+    // 第一次開分頁：新增紀錄並寫入數字
+    recordVisit(true)
+    sessionStorage.setItem('visited', 'true')
+  } else {
+    // 按 F5 重新整理：不新增紀錄，但去後端拿目前的總數字
+    recordVisit(false)
+  }
+})
 </script>
 
 <template>
@@ -167,27 +207,29 @@ const handleSwipeGesture = (start, end) => {
       </div>
 
     </div>
+
+    <div class="visitor-badge">
+      瀏覽次數：<span>{{ visitorCount !== null ? visitorCount : '載入中...' }}</span>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .page-container {
-  /* Lock page size to screen height */
   width: 100vw;
   height: 100vh;
-  height: 100dvh; /* Dynamic viewport height for mobile browsers */
+  height: 100dvh;
   position: fixed;
   top: 0;
   left: 0;
-  overflow: hidden; /* Disables all scrolling */
+  overflow: hidden;
   
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   background-color: #0f172a;
   color: #f8fafc;
-   font-family:
+  font-family:
     "Segoe UI",
     "Microsoft JhengHei",
     "Microsoft YaHei",
@@ -195,9 +237,9 @@ const handleSwipeGesture = (start, end) => {
     sans-serif;
   padding: 20px;
   user-select: none;
-  touch-action: none; /* Prevents mobile browser gesture pull-to-refresh */
-  justify-content: flex-start; /* Aligns content toward the top */
-  padding-top: 40px; /* Controls top distance from screen edge */
+  touch-action: none;
+  justify-content: flex-start;
+  padding-top: 40px;
 }
 
 .title {
@@ -211,9 +253,29 @@ const handleSwipeGesture = (start, end) => {
   color: #38bdf8;
 }
 
-.title p {
+/* Floating Bottom Right Visitor Badge */
+.visitor-badge {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.3);
   color: #94a3b8;
-  margin-top: 8px;
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.visitor-badge span {
+  color: #38bdf8;
+  font-weight: 700;
 }
 
 /* Stack Container */
@@ -222,7 +284,7 @@ const handleSwipeGesture = (start, end) => {
   width: 100%;
   max-width: 500px;
   height: 320px;
-  touch-action: none; /* Locks touch specifically to card swipes */
+  touch-action: none;
 }
 
 /* Base Card Styling */
@@ -252,7 +314,7 @@ const handleSwipeGesture = (start, end) => {
 }
 
 .expand-btn {
-  display: none; /* Hidden on desktop by default */
+  display: none;
   background: rgba(255, 255, 255, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: #fff;
@@ -279,11 +341,10 @@ const handleSwipeGesture = (start, end) => {
 
 .scrollable-content {
   overflow-y: auto;
-  touch-action: pan-y; /* Allows vertical scrolling inside expanded card */
+  touch-action: pan-y;
   padding-right: 6px;
 }
 
-/* Custom sleek scrollbar */
 .scrollable-content::-webkit-scrollbar {
   width: 5px;
 }
@@ -309,23 +370,19 @@ const handleSwipeGesture = (start, end) => {
   border: 1px solid #065f46;
 }
 
-/* Dynamic Depth Classes (Positions in the stack) */
-
-/* Depth 0 (Active / Front Card) */
+/* Dynamic Depth Classes */
 .card.depth-0 {
   transform: translateY(-10px) scale(1.02);
   z-index: 10;
   box-shadow: 0 20px 35px -5px rgba(0, 0, 0, 0.7);
 }
 
-/* Depth 1 (Middle Card Position) */
 .card.depth-1 {
   transform: translateY(30px) scale(0.95);
   z-index: 5;
   opacity: 0.9;
 }
 
-/* Depth 2 (Back Card Position) */
 .card.depth-2 {
   transform: translateY(60px) scale(0.9);
   z-index: 1;
@@ -387,7 +444,7 @@ const handleSwipeGesture = (start, end) => {
 
 .info-list p strong {
   font-weight: 700;
-  }
+}
 
 .placeholder-content {
   flex: 1;
