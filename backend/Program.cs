@@ -4,6 +4,15 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://0.0.0.0:5286");
 
+// --- FIXED FOR RENDER: Disable file watching to prevent inotify exhaustion ---
+var env = builder.Environment.EnvironmentName;
+builder.Configuration.Sources.Clear(); // Removes default configuration watchers
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+    .AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: false)
+    .AddEnvironmentVariables(); // Essential for Render environment variables
+// ----------------------------------------------------------------------------
+
 // 1. 註冊 CORS (允許 Vue 存取)
 var allowedOrigins = builder.Configuration.GetSection("AllowedCorsOrigins").Get<string[]>() 
                      ?? new[] { "http://192.168.200.171:5173/vue-resume/" };
@@ -17,6 +26,7 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader();
     });
 });
+
 
 // 2. 註冊 MySQL 資料庫連線
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
